@@ -29,6 +29,25 @@ services:
     depends_on:
       - db
 
+  ml:
+    build:
+      context: .
+      dockerfile: ./ml/Dockerfile.prod
+    container_name: ml-prod
+    ports:
+      - "8100:8100"
+    volumes:
+      - ./ml:/app/ml
+    env_file:
+      - ./.env
+    environment:
+      - ARTIFACTS_DIR=/app/ml/artifacts
+      - API_HOST=0.0.0.0
+      - API_PORT=8100
+      - MP_API_BASE=http://backend:8001
+    depends_on:
+      - backend
+
 
 volumes:
   postgres-data:
