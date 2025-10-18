@@ -247,6 +247,12 @@ async def vk_auth_start():
     return RedirectResponse(payload["url"])
 
 
+@router.get("/auth/vk/url")
+async def vk_auth_start_url():
+    """Return VK OAuth URL and state as JSON (for SPA/Swagger)"""
+    return vk_oauth_service.get_authorization_url()
+
+
 @router.get("/auth/vk/callback", response_model=VKAuthResponse)
 async def vk_auth_callback(
     code: str,
