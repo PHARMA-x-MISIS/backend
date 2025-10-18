@@ -242,14 +242,15 @@ async def read_user(
 # --- VK OAuth Endpoints ---
 @router.get("/auth/vk")
 async def vk_auth_start():
-    """Redirect to VK OAuth page"""
-    auth_url = vk_oauth_service.get_authorization_url()
-    return RedirectResponse(auth_url)
+    """Redirect to VK OAuth page with state"""
+    payload = vk_oauth_service.get_authorization_url()
+    return RedirectResponse(payload["url"])
 
 
 @router.get("/auth/vk/callback", response_model=VKAuthResponse)
 async def vk_auth_callback(
     code: str,
+    state: str | None = None,
     session: AsyncSession = Depends(get_async_session)
 ):
     """Handle VK OAuth callback"""
@@ -257,6 +258,12 @@ async def vk_auth_callback(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Authorization code is required"
+        )
+    # validate state
+    if not vk_oauth_service.validate_and_consume_state(state):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid state"
         )
 
     # Exchange code for access token
@@ -311,7 +318,6 @@ async def vk_auth_callback(
 
     # Create JWT token
     jwt_token = create_access_token(data={"user_id": user.id, "email": user.email})
-    
     return VKAuthResponse(
         access_token=jwt_token,
         token_type="bearer",

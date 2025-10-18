@@ -1,5 +1,7 @@
 import httpx
 from typing import Optional, Dict, Any
+import secrets
+import base64
 import logging
 from api.core.settings import VK_CLIENT_ID, VK_CLIENT_SECRET, VK_REDIRECT_URI, VK_API_VERSION
 from api.core.schemas.auth import VKUserInfo  # Import from auth specifically
@@ -12,6 +14,8 @@ class VKOAuthService:
         self.api_version = VK_API_VERSION
         self.base_url = "https://oauth.vk.com"
         self.api_url = "https://api.vk.com/method"
+        # simple in-memory state storage; for production, replace with signed state or redis
+        self._issued_states: set[str] = set()
 
     async def get_access_token(self, code: str) -> Optional[Dict[str, Any]]:
         """Exchange authorization code for access token"""
@@ -70,16 +74,34 @@ class VKOAuthService:
             logging.error(f"Error getting VK user info: {e}")
             return None
 
-    def get_authorization_url(self) -> str:
-        """Generate VK OAuth authorization URL"""
-        return (
+    def _generate_state(self) -> str:
+        token = secrets.token_urlsafe(24)
+        # keep compact
+        state = base64.urlsafe_b64encode(token.encode()).decode().rstrip("=")
+        self._issued_states.add(state)
+        return state
+
+    def validate_and_consume_state(self, state: Optional[str]) -> bool:
+        if not state:
+            return False
+        if state in self._issued_states:
+            self._issued_states.remove(state)
+            return True
+        return False
+
+    def get_authorization_url(self) -> Dict[str, str]:
+        """Generate VK OAuth authorization URL with state"""
+        state = self._generate_state()
+        url = (
             f"{self.base_url}/authorize?"
             f"client_id={self.client_id}&"
             f"redirect_uri={self.redirect_uri}&"
             f"response_type=code&"
-            f"scope=email&"  # Request email permission
-            f"v={self.api_version}"
+            f"scope=email&"
+            f"v={self.api_version}&"
+            f"state={state}"
         )
+        return {"url": url, "state": state}
 
 
 # Create global instance
