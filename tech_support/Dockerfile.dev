@@ -1,0 +1,21 @@
+FROM python:3.11-slim
+WORKDIR /app
+
+RUN pip install --upgrade pip && \
+    pip install \
+      fastapi==0.119.0 \
+      uvicorn==0.37.0 \
+      aiohttp==3.9.5 \
+      pydantic==2.7.4
+
+COPY tech_support /app/tech_support
+
+ENV PYTHONUNBUFFERED=1 \
+    TS_HOST=0.0.0.0 \
+    TS_PORT=8200
+
+EXPOSE 8200
+
+CMD ["uvicorn", "tech_support.main:app", "--host", "0.0.0.0", "--port", "8200", "--reload"]
+
+

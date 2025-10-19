@@ -48,6 +48,23 @@ services:
     depends_on:
       - backend
 
+  tech_support:
+    build:
+      context: .
+      dockerfile: ./tech_support/Dockerfile.prod
+    container_name: tech-support-prod
+    ports:
+      - "8200:8200"
+    volumes:
+      - ./tech_support:/app/tech_support
+    env_file:
+      - ./.env
+    environment:
+      - TS_HOST=0.0.0.0
+      - TS_PORT=8200
+    depends_on:
+      - backend
+
 
 volumes:
   postgres-data:
